@@ -12,7 +12,6 @@ type ConsumeOperator[Msg any] struct {
 	callback   queue.Callback[Msg]
 
 	initialized bool
-	running     bool
 	cancel      *context.CancelFunc
 
 	consumer *Consumer
@@ -106,6 +105,7 @@ type BeforeBytesProduceOperator struct {
 
 func NewBytesProduceOperatorCtor(brokers []string, configProvider func() *sarama.Config) *BeforeBytesProduceOperator {
 	return &BeforeBytesProduceOperator{
+		pool:           NewProducerPool(brokers, configProvider),
 		brokers:        brokers,
 		configProvider: configProvider,
 	}
