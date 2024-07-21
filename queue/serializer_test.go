@@ -3,7 +3,7 @@ package queue_test
 import (
 	"github.com/IBM/sarama"
 	"github.com/stretchr/testify/assert"
-	"github.com/violetpay-org/new-queue-manager/queue"
+	"github.com/violetpay-org/event-queue/queue"
 	"testing"
 )
 

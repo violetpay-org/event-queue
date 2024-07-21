@@ -2,8 +2,8 @@ package kafkaqueue
 
 import (
 	"github.com/IBM/sarama"
-	kafkaqueue "github.com/violetpay-org/new-queue-manager/internal/queue/kafka"
-	"github.com/violetpay-org/new-queue-manager/queue"
+	kafkaqueue "github.com/violetpay-org/event-queue/internal/queue/kafka"
+	"github.com/violetpay-org/event-queue/queue"
 )
 
 func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) *kafkaqueue.ConsumeOperator[Msg] {

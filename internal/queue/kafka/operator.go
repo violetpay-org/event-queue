@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/IBM/sarama"
-	"github.com/violetpay-org/new-queue-manager/queue"
+	"github.com/violetpay-org/event-queue/queue"
 )
 
 type ConsumeOperator[Msg any] struct {
