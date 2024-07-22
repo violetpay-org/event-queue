@@ -60,14 +60,14 @@ func (k *ConsumeOperator[Msg]) Init() {
 	k.initialized = true
 }
 
-func (k *ConsumeOperator[Msg]) StartConsume() {
+func (k *ConsumeOperator[Msg]) StartConsume() error {
 	if !k.initialized {
 		k.Init()
 	}
 
 	client, err := sarama.NewConsumerGroup(k.brokers, k.groupId, k.config)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,14 +86,18 @@ func (k *ConsumeOperator[Msg]) StartConsume() {
 			}
 		}
 	}()
+
+	return nil
 }
 
-func (k *ConsumeOperator[Msg]) StopConsume() {
+func (k *ConsumeOperator[Msg]) StopConsume() error {
 	if k.cancel == nil {
-		return
+		return errors.New("tried to stop consume before starting (or operator no started, but StopConsume called)")
 	}
 
 	(*k.cancel)()
+
+	return nil
 }
 
 type BeforeBytesProduceOperator struct {
