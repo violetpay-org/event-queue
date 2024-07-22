@@ -44,3 +44,7 @@ func (c *Consumer) Cleanup(session sarama.ConsumerGroupSession) error {
 	log.Print("Consumer stopped")
 	return nil
 }
+
+func (c *Consumer) Callback() func(*sarama.ConsumerMessage) {
+	return c.callback
+}
