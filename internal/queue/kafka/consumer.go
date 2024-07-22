@@ -1,6 +1,9 @@
 package kafkaqueue
 
-import "github.com/IBM/sarama"
+import (
+	"github.com/IBM/sarama"
+	"log"
+)
 
 type Consumer struct {
 	callback func(*sarama.ConsumerMessage)
@@ -32,10 +35,12 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 // Setup is run at the beginning of a new session, before ConsumeClaim.
 func (c *Consumer) Setup(session sarama.ConsumerGroupSession) error {
+	log.Print("Consumer up and running")
 	return nil
 }
 
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited.
 func (c *Consumer) Cleanup(session sarama.ConsumerGroupSession) error {
+	log.Print("Consumer stopped")
 	return nil
 }
