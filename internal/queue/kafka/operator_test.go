@@ -12,6 +12,13 @@ func mapConsumeOperatorProvider(queueName string, serializer queue.MessageSerial
 	return NewConsumeOperator(serializer, callback, brokers, queueName, "test-group-id", sarama.NewConfig())
 }
 
+func mapAckConsumeOperatorProvider(queueName string, serializer queue.MessageSerializer[*sarama.ConsumerMessage, map[string]string], callback queue.Callback[map[string]string]) queue.ConsumeOperator[*sarama.ConsumerMessage, map[string]string] {
+	f := func(_ map[string]string) bool {
+		return true
+	}
+	return NewAckConsumeOperator(serializer, f, callback, brokers, queueName, "test-group-id", sarama.NewConfig())
+}
+
 func consumeMessageProvider() *sarama.ConsumerMessage {
 	return &sarama.ConsumerMessage{}
 }
@@ -23,7 +30,14 @@ func TestConsumeOperator(t *testing.T) {
 			mapConsumeOperatorProvider,
 			consumeMessageProvider,
 		)
+
+		queue.TestSuiteConsumeOperator[*sarama.ConsumerMessage, map[string]string](
+			t,
+			mapAckConsumeOperatorProvider,
+			consumeMessageProvider,
+		)
 	})
+
 }
 
 func bytesProduceOperatorProvider(queueName string) queue.ProduceOperator[[]byte] {
