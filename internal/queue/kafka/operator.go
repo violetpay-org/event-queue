@@ -3,6 +3,7 @@ package kafkaqueue
 import (
 	"context"
 	"errors"
+
 	"github.com/IBM/sarama"
 	"github.com/violetpay-org/event-queue/queue"
 )
@@ -14,14 +15,21 @@ type ConsumeOperator[Msg any] struct {
 	initialized bool
 	cancel      *context.CancelFunc
 
-	consumer *Consumer
+	consumer sarama.ConsumerGroupHandler
 	brokers  []string
 	topic    string
 	groupId  string
 	config   *sarama.Config
 }
 
-func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) *ConsumeOperator[Msg] {
+func NewConsumeOperator[Msg any](
+	serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg],
+	callback queue.Callback[Msg],
+	brokers []string,
+	topic string,
+	groupId string,
+	config *sarama.Config,
+) *ConsumeOperator[Msg] {
 	return &ConsumeOperator[Msg]{
 		serializer: serializer,
 		callback:   callback,
@@ -44,17 +52,24 @@ func (k *ConsumeOperator[Msg]) Callback() queue.Callback[Msg] {
 	return k.callback
 }
 
-func (k *ConsumeOperator[Msg]) Consume(msg *sarama.ConsumerMessage) {
+func (k *ConsumeOperator[Msg]) Consume(msg *sarama.ConsumerMessage) error {
 	sMsg, err := k.serializer.Serialize(msg)
 	if err != nil {
-		return
+		return err
 	}
 
-	k.callback(sMsg)
+	return k.callback(sMsg)
 }
 
 func (k *ConsumeOperator[Msg]) Init() {
-	consumer := NewConsumer(k.Consume)
+	serializeAndConsume := k.Consume
+	var consumer sarama.ConsumerGroupHandler
+
+	if k.config.Consumer.Offsets.AutoCommit.Enable {
+		consumer = NewAutoCommittingConsumer(serializeAndConsume)
+	} else {
+		consumer = NewManualCommittingConsumer(serializeAndConsume)
+	}
 
 	k.consumer = consumer
 	k.initialized = true

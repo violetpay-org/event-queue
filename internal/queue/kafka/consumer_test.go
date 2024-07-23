@@ -2,12 +2,18 @@ package kafkaqueue_test
 
 import (
 	"context"
-	"github.com/IBM/sarama"
-	"github.com/stretchr/testify/assert"
-	kafkaqueue "github.com/violetpay-org/event-queue/internal/queue/kafka"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/IBM/sarama"
+	"github.com/stretchr/testify/assert"
+	kafkaqueue "github.com/violetpay-org/event-queue/internal/queue/kafka"
+	"github.com/violetpay-org/event-queue/queue"
+)
+
+var (
+	baseSerializeThenConsume queue.Callback[*sarama.ConsumerMessage] = func(msg *sarama.ConsumerMessage) error { return nil }
 )
 
 func TestNewConsumer(t *testing.T) {
@@ -17,7 +23,7 @@ func TestNewConsumer(t *testing.T) {
 			consumer = nil
 		})
 
-		consumer = kafkaqueue.NewConsumer(func(msg *sarama.ConsumerMessage) {})
+		consumer = kafkaqueue.NewAutoCommittingConsumer(baseSerializeThenConsume)
 		assert.NotNil(t, consumer)
 	})
 }
@@ -29,7 +35,7 @@ func TestConsumer_Callback(t *testing.T) {
 			consumer = nil
 		})
 
-		consumer = kafkaqueue.NewConsumer(func(msg *sarama.ConsumerMessage) {})
+		consumer = kafkaqueue.NewAutoCommittingConsumer(baseSerializeThenConsume)
 		assert.NotNil(t, consumer)
 
 		assert.NotNil(t, consumer.Callback())
@@ -38,10 +44,11 @@ func TestConsumer_Callback(t *testing.T) {
 
 func TestConsumer_ConsumeClaim(t *testing.T) {
 	callbackCount := atomic.Int64{}
-	callback := func(msg *sarama.ConsumerMessage) {
+	callback := func(msg *sarama.ConsumerMessage) error {
 		callbackCount.Add(1)
+		return nil
 	}
-	consumer := kafkaqueue.NewConsumer(callback)
+	consumer := kafkaqueue.NewAutoCommittingConsumer(callback)
 	sess := &kafkaqueue.MockConsumerGroupSession{}
 	msg := &kafkaqueue.MockConsumerGroupClaim{}
 
@@ -50,7 +57,7 @@ func TestConsumer_ConsumeClaim(t *testing.T) {
 			sess = &kafkaqueue.MockConsumerGroupSession{}
 			msg = &kafkaqueue.MockConsumerGroupClaim{}
 			callbackCount = atomic.Int64{}
-			consumer = kafkaqueue.NewConsumer(callback)
+			consumer = kafkaqueue.NewAutoCommittingConsumer(callback)
 		})
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -73,7 +80,7 @@ func TestConsumer_ConsumeClaim(t *testing.T) {
 			sess = &kafkaqueue.MockConsumerGroupSession{}
 			msg = &kafkaqueue.MockConsumerGroupClaim{}
 			callbackCount = atomic.Int64{}
-			consumer = kafkaqueue.NewConsumer(callback)
+			consumer = kafkaqueue.NewAutoCommittingConsumer(callback)
 		})
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -96,7 +103,7 @@ func TestConsumer_ConsumeClaim(t *testing.T) {
 			sess = &kafkaqueue.MockConsumerGroupSession{}
 			msg = &kafkaqueue.MockConsumerGroupClaim{}
 			callbackCount = atomic.Int64{}
-			consumer = kafkaqueue.NewConsumer(callback)
+			consumer = kafkaqueue.NewAutoCommittingConsumer(callback)
 		})
 
 		ctx, cancel := context.WithCancel(context.Background())

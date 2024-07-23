@@ -1,3 +1,3 @@
 package queue
 
-type Callback[M any] func(req M)
+type Callback[M any] func(req M) error

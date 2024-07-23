@@ -1,15 +1,20 @@
 package kafkaqueue
 
 import (
-	"github.com/IBM/sarama"
 	"log"
+
+	"github.com/IBM/sarama"
+	"github.com/violetpay-org/event-queue/queue"
 )
 
+type ConsumerCallback = queue.Callback[*sarama.ConsumerMessage]
+
+// Consumer implements sarama.ConsumerGroupHandler.
 type Consumer struct {
-	callback func(*sarama.ConsumerMessage)
+	callback ConsumerCallback
 }
 
-func NewConsumer(callback func(message *sarama.ConsumerMessage)) *Consumer {
+func NewAutoCommittingConsumer(callback ConsumerCallback) *Consumer {
 	return &Consumer{
 		callback: callback,
 	}
@@ -25,8 +30,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				return nil
 			}
 
-			c.callback(msg)
-
+			go c.callback(msg)
 		case <-session.Context().Done():
 			return nil
 		}
@@ -45,6 +49,6 @@ func (c *Consumer) Cleanup(session sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (c *Consumer) Callback() func(*sarama.ConsumerMessage) {
+func (c *Consumer) Callback() ConsumerCallback {
 	return c.callback
 }

@@ -1,9 +1,10 @@
 package queue
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type mockSerializer[Input any, Output any] struct {
@@ -40,8 +41,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 		queueName = "testQueueName"
 		serializer = newMockSerializer[InMsg, Msg]()
 		callbackCount = atomic.Int64{}
-		callback = func(msg Msg) {
+		callback = func(msg Msg) error {
 			callbackCount.Add(1)
+			return nil
 		}
 
 		operator := operatorProvider(queueName, serializer, callback)
@@ -51,8 +53,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -65,8 +68,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -86,8 +90,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -100,9 +105,10 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
 					callbackValue = msg
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -125,8 +131,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator.StopConsume()
 				operator = operatorProvider(queueName, serializer, callback)
@@ -143,8 +150,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator.StopConsume()
 				operator = operatorProvider(queueName, serializer, callback)
