@@ -9,10 +9,7 @@ type ConsumeOperator[InMsg any, Msg any] interface {
 	StopConsume() error
 }
 
-type ProduceOperatorCtor[Msg any] interface {
-	Dest(string) ProduceOperator[Msg]
-}
-
 type ProduceOperator[Msg any] interface {
+	QueueName() string
 	Produce(message Msg) error
 }

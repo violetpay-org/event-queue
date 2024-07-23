@@ -100,23 +100,23 @@ func (k *ConsumeOperator[Msg]) StopConsume() error {
 	return nil
 }
 
-type BeforeBytesProduceOperator struct {
+type BytesProduceOperatorCtor struct {
 	pool *ProducerPool
 
 	brokers        []string
 	configProvider func() *sarama.Config
 }
 
-func NewBytesProduceOperatorCtor(brokers []string, configProvider func() *sarama.Config) *BeforeBytesProduceOperator {
-	return &BeforeBytesProduceOperator{
+func NewBytesProduceOperatorCtor(brokers []string, configProvider func() *sarama.Config) *BytesProduceOperatorCtor {
+	return &BytesProduceOperatorCtor{
 		pool:           NewProducerPool(brokers, configProvider),
 		brokers:        brokers,
 		configProvider: configProvider,
 	}
 }
 
-func (k *BeforeBytesProduceOperator) Dest(topic string) queue.ProduceOperator[[]byte] {
-	return NewBytesProduceOperator(k.pool, k.brokers, topic, k.configProvider)
+func (k *BytesProduceOperatorCtor) Dest(topic string) queue.ProduceOperator[[]byte] {
+	return newBytesProduceOperatorFromLowLevel(k.pool, k.brokers, topic, k.configProvider)
 }
 
 type BytesProduceOperator struct {
@@ -127,13 +127,26 @@ type BytesProduceOperator struct {
 	topic          string
 }
 
-func NewBytesProduceOperator(pool *ProducerPool, brokers []string, topic string, configProvider func() *sarama.Config) *BytesProduceOperator {
+func newBytesProduceOperatorFromLowLevel(pool *ProducerPool, brokers []string, topic string, configProvider func() *sarama.Config) *BytesProduceOperator {
 	return &BytesProduceOperator{
 		brokers:        brokers,
 		topic:          topic,
 		configProvider: configProvider,
 		pool:           pool,
 	}
+}
+
+func NewBytesProduceOperator(brokers []string, topic string, configProvider func() *sarama.Config) *BytesProduceOperator {
+	return &BytesProduceOperator{
+		pool:           NewProducerPool(brokers, configProvider),
+		brokers:        brokers,
+		configProvider: configProvider,
+		topic:          topic,
+	}
+}
+
+func (k *BytesProduceOperator) QueueName() string {
+	return k.topic
 }
 
 func (k *BytesProduceOperator) Produce(message []byte) error {

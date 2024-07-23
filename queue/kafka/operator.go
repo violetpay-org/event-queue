@@ -10,6 +10,10 @@ func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.Cons
 	return kafkaqueue.NewConsumeOperator(serializer, callback, brokers, topic, groupId, config)
 }
 
-func NewProduceOperator[Msg any](brokers []string, configProvider func() *sarama.Config) *kafkaqueue.BeforeBytesProduceOperator {
+func NewProduceOperatorCtor(brokers []string, configProvider func() *sarama.Config) *kafkaqueue.BytesProduceOperatorCtor {
 	return kafkaqueue.NewBytesProduceOperatorCtor(brokers, configProvider)
+}
+
+func NewBytesProduceOperator(brokers []string, topic string, configProvider func() *sarama.Config) *kafkaqueue.BytesProduceOperator {
+	return kafkaqueue.NewBytesProduceOperator(brokers, topic, configProvider)
 }
