@@ -28,7 +28,7 @@ func newMockSerializer[Input any, Output any]() *mockSerializer[Input, Output] {
 func TestSuiteConsumeOperator[InMsg any, Msg any](
 	t *testing.T,
 	operatorProvider func(queueName string, serializer MessageSerializer[InMsg, Msg], callback Callback[Msg]) ConsumeOperator[InMsg, Msg],
-	rawMessageProvider func() InMsg,
+	testMessageProvider func() InMsg,
 ) {
 	t.Run("ConsumeOperator Test Suite", func(t *testing.T) {
 		var queueName string
@@ -72,7 +72,7 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 			})
 
 			assert.NotNil(t, operator.Serializer(), serializer)
-			_, err := serializer.Serialize(rawMessageProvider())
+			_, err := serializer.Serialize(testMessageProvider())
 			if err != nil {
 				return
 			}
@@ -107,7 +107,7 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				operator = operatorProvider(queueName, serializer, callback)
 			})
 
-			msg := rawMessageProvider()
+			msg := testMessageProvider()
 			assert.NotNil(t, msg)
 
 			expectedSerializedValue, err := serializer.Serialize(msg)
@@ -132,10 +132,8 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				operator = operatorProvider(queueName, serializer, callback)
 			})
 
-			assert.NotPanics(t, func() {
-				operator.StartConsume()
-			})
-
+			err := operator.StartConsume()
+			assert.Nil(t, err)
 		})
 
 		t.Run("StopConsume", func(t *testing.T) {
@@ -150,12 +148,45 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				operator = operatorProvider(queueName, serializer, callback)
 			})
 
-			assert.NotPanics(t, func() {
-				operator.StartConsume()
+			err := operator.StartConsume()
+			assert.Nil(t, err)
+
+			err = operator.StopConsume()
+			assert.Nil(t, err)
+		})
+	})
+}
+
+func TestSuiteProduceOperator[Msg any](
+	t *testing.T,
+	operatorProvider func(queueName string) ProduceOperator[Msg],
+	testMessageProvider func() Msg,
+) {
+	t.Run("ProduceOperator Test Suite", func(t *testing.T) {
+		queueName := "testQueueName"
+		var operator ProduceOperator[Msg]
+
+		t.Run("QueueName", func(t *testing.T) {
+			t.Cleanup(func() {
+				queueName = "testQueueName"
+				operator = nil
 			})
 
-			assert.NotPanics(t, func() {
-				operator.StopConsume()
+			operator = operatorProvider(queueName)
+			assert.Equal(t, operator.QueueName(), queueName)
+		})
+
+		t.Run("Produce", func(t *testing.T) {
+			t.Run("Produce with valid message", func(t *testing.T) {
+				t.Cleanup(func() {
+					queueName = "testQueueName"
+					operator = nil
+				})
+
+				operator = operatorProvider(queueName)
+				msg := testMessageProvider()
+				err := operator.Produce(msg)
+				assert.Nil(t, err)
 			})
 		})
 	})
