@@ -30,14 +30,18 @@ func TestConsumeOperator(t *testing.T) {
 			mapConsumeOperatorProvider,
 			consumeMessageProvider,
 		)
+	})
 
+}
+
+func TestAckConsumeOperator(t *testing.T) {
+	t.Run("map[string]string", func(t *testing.T) {
 		queue.TestSuiteConsumeOperator[*sarama.ConsumerMessage, map[string]string](
 			t,
 			mapAckConsumeOperatorProvider,
 			consumeMessageProvider,
 		)
 	})
-
 }
 
 func bytesProduceOperatorProvider(queueName string) queue.ProduceOperator[[]byte] {
