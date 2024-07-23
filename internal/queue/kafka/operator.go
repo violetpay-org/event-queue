@@ -162,7 +162,7 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 	}
 
 	producer.Input() <- &sarama.ProducerMessage{
-		Topic: k.brokers[0],
+		Topic: k.topic,
 		Value: sarama.ByteEncoder(message),
 	}
 
