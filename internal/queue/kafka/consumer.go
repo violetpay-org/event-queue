@@ -25,7 +25,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 				return nil
 			}
 
-			go c.callback(msg)
+			c.callback(msg)
 
 		case <-session.Context().Done():
 			return nil
