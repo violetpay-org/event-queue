@@ -304,9 +304,13 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 		return errors.New("message is nil")
 	}
 
-	producer.Input() <- &sarama.ProducerMessage{
+	_, _, err := producer.SendMessage(&sarama.ProducerMessage{
 		Topic: k.topic,
 		Value: sarama.ByteEncoder(message),
+	})
+
+	if err != nil {
+		return err
 	}
 
 	return nil
