@@ -2,11 +2,15 @@ package kafkaqueue
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/IBM/sarama"
 	"github.com/violetpay-org/event-queue/queue"
 	"log"
+	"sync/atomic"
 )
+
+var count = &atomic.Int64{}
 
 type ConsumeOperator[Msg any] struct {
 	serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg]
@@ -304,16 +308,31 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 		return errors.New("message is nil")
 	}
 
-	log.Print("Before Produce Message:" + string(k.topic))
+	var test testStruct
+	err := json.Unmarshal(message, &test)
+	if err != nil {
+		return err
+	}
 
-	_, _, err := producer.SendMessage(&sarama.ProducerMessage{
+	if test.status == "success" {
+		count.Add(1)
+	}
+
+	_, _, err = producer.SendMessage(&sarama.ProducerMessage{
 		Topic: k.topic,
 		Value: sarama.ByteEncoder(message),
 	})
+
+	log.Print("Produced. BeforeProduce Count (썩세스만): ", count.Load())
 
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+type testStruct struct {
+	requestId string
+	status    string
 }
