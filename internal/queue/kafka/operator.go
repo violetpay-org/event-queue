@@ -314,7 +314,7 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 		return err
 	}
 
-	if test.status == "success" {
+	if test.Status == "success" {
 		count.Add(1)
 	}
 
@@ -333,6 +333,5 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 }
 
 type testStruct struct {
-	requestId string
-	status    string
+	Status string `json:"status"`
 }
