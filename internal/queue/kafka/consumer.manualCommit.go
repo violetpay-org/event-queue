@@ -2,12 +2,17 @@ package kafkaqueue
 
 import (
 	"log"
+	"sync"
 
 	"github.com/IBM/sarama"
 )
 
+// NOT YET IMPLEMENTED !!!
 type ManualCommittingConsumer struct {
 	callback ConsumerCallback
+
+	messageQueue chan *sarama.ConsumerMessage
+	mutex        sync.Mutex
 }
 
 func NewManualCommittingConsumer(callback ConsumerCallback) sarama.ConsumerGroupHandler {
@@ -17,6 +22,9 @@ func NewManualCommittingConsumer(callback ConsumerCallback) sarama.ConsumerGroup
 }
 
 func (c *ManualCommittingConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	lst := make([]*sarama.ConsumerMessage, 10)
+	mutex := sync.Mutex{}
+
 	for {
 		select {
 		case msg, ok := <-claim.Messages():
@@ -24,11 +32,9 @@ func (c *ManualCommittingConsumer) ConsumeClaim(session sarama.ConsumerGroupSess
 				return nil
 			}
 
-			err := c.callback(msg)
-			if err == nil {
-				session.Commit()
-			}
-
+			mutex.Lock()
+			lst = append(lst, msg)
+			mutex.Unlock()
 		case <-session.Context().Done():
 			return nil
 		}

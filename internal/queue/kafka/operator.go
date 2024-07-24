@@ -155,10 +155,10 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 	producer := k.pool.Take()
 	defer k.pool.Return(producer)
 
-	producer.Input() <- &sarama.ProducerMessage{
+	_, _, err := producer.SendMessage(&sarama.ProducerMessage{
 		Topic: k.brokers[0],
 		Value: sarama.ByteEncoder(message),
-	}
+	})
 
-	return nil
+	return err
 }

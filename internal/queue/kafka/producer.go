@@ -2,22 +2,23 @@ package kafkaqueue
 
 import (
 	"fmt"
-	"github.com/IBM/sarama"
 	"sync"
+
+	"github.com/IBM/sarama"
 )
 
 // ProducerPool is a pool of producers that can be used to produce messages to Kafka for one set of brokers.
 // It is not related to Transaction, Transactional Producer implements by configProvider.
 type ProducerPool struct {
 	locker    sync.Mutex
-	producers []sarama.AsyncProducer
+	producers []sarama.SyncProducer
 
 	brokers        []string
 	configProvider func() *sarama.Config
 }
 
 // Take returns a producer from pool. If the producer does not exist, it creates a new one.
-func (p *ProducerPool) Take() (producer sarama.AsyncProducer) {
+func (p *ProducerPool) Take() (producer sarama.SyncProducer) {
 	p.locker.Lock()
 	defer p.locker.Unlock()
 
@@ -33,7 +34,7 @@ func (p *ProducerPool) Take() (producer sarama.AsyncProducer) {
 }
 
 // Return returns a producer to the pool.
-func (p *ProducerPool) Return(producer sarama.AsyncProducer) {
+func (p *ProducerPool) Return(producer sarama.SyncProducer) {
 	p.locker.Lock()
 	defer p.locker.Unlock()
 
@@ -51,7 +52,7 @@ func (p *ProducerPool) Return(producer sarama.AsyncProducer) {
 	p.producers = append(p.producers, producer)
 }
 
-func (p *ProducerPool) Producers() []sarama.AsyncProducer {
+func (p *ProducerPool) Producers() []sarama.SyncProducer {
 	return p.producers
 }
 
@@ -71,7 +72,7 @@ func NewProducerPool(brokers []string, configProvider func() *sarama.Config) *Pr
 
 	pool := &ProducerPool{
 		locker:         sync.Mutex{},
-		producers:      []sarama.AsyncProducer{},
+		producers:      []sarama.SyncProducer{},
 		brokers:        brokers,
 		configProvider: configProvider,
 	}
@@ -79,8 +80,8 @@ func NewProducerPool(brokers []string, configProvider func() *sarama.Config) *Pr
 	return pool
 }
 
-func (p *ProducerPool) generateProducer() sarama.AsyncProducer {
-	producer, err := sarama.NewAsyncProducer(p.brokers, p.configProvider())
+func (p *ProducerPool) generateProducer() sarama.SyncProducer {
+	producer, err := sarama.NewSyncProducer(p.brokers, p.configProvider())
 	if err != nil {
 		fmt.Println("Error creating producer", err)
 		return nil
