@@ -2,7 +2,6 @@ package kafkaqueue
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"github.com/IBM/sarama"
 	"github.com/violetpay-org/event-queue/queue"
@@ -308,30 +307,14 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 		return errors.New("message is nil")
 	}
 
-	var test testStruct
-	err := json.Unmarshal(message, &test)
-	if err != nil {
-		return err
-	}
-
-	if test.Status == "success" {
-		count.Add(1)
-	}
-
-	_, _, err = producer.SendMessage(&sarama.ProducerMessage{
+	_, _, err := producer.SendMessage(&sarama.ProducerMessage{
 		Topic: k.topic,
 		Value: sarama.ByteEncoder(message),
 	})
-
-	log.Print("Produced. BeforeProduce Count (썩세스만): ", count.Load())
 
 	if err != nil {
 		return err
 	}
 
 	return nil
-}
-
-type testStruct struct {
-	Status string `json:"status"`
 }
