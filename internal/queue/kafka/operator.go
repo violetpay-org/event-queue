@@ -3,30 +3,41 @@ package kafkaqueue
 import (
 	"context"
 	"errors"
-	"github.com/IBM/sarama"
-	"github.com/violetpay-org/event-queue/queue"
+
 	"log"
 	"sync/atomic"
+
+	"github.com/IBM/sarama"
+	"github.com/violetpay-org/event-queue/queue"
 )
 
 var count = &atomic.Int64{}
 
-type ConsumeOperator[Msg any] struct {
+type KafkaConsumerGroupOperator[Msg any] struct {
 	serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg]
 	callback   queue.Callback[Msg]
 
-	initialized bool
-	cancel      *context.CancelFunc
+	brokers []string
+	topic   string
+	groupId string
+	config  *sarama.Config
 
-	consumer *Consumer
-	brokers  []string
-	topic    string
-	groupId  string
-	config   *sarama.Config
+	// Only for internal use
+	initialized          bool
+	cancel               *context.CancelFunc
+	consumerGroupHandler sarama.ConsumerGroupHandler
+	consumerGroup        sarama.ConsumerGroup
 }
 
-func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) *ConsumeOperator[Msg] {
-	return &ConsumeOperator[Msg]{
+func NewConsumer[Msg any](
+	serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg],
+	callback queue.Callback[Msg],
+	brokers []string,
+	topic string,
+	groupId string,
+	config *sarama.Config,
+) queue.Consumer[*sarama.ConsumerMessage, Msg] {
+	consumerOperator := KafkaConsumerGroupOperator[Msg]{
 		serializer: serializer,
 		callback:   callback,
 		brokers:    brokers,
@@ -34,67 +45,63 @@ func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.Cons
 		groupId:    groupId,
 		config:     config,
 	}
+
+	if err := consumerOperator.init(); err != nil {
+		// 생성시 발생하는 에러는 panic으로 처리합니다.
+		// 이 경우, 오직서서버가 시작할때 발생하는 에러이기 때문에
+		// panic으로 처리해도 큰 문제가 없습니다.
+		panic(err)
+	}
+
+	return &consumerOperator
 }
 
-func (k *ConsumeOperator[Msg]) QueueName() string {
+func (k *KafkaConsumerGroupOperator[Msg]) QueueName() string {
 	return k.topic
 }
 
-func (k *ConsumeOperator[Msg]) Serializer() queue.MessageSerializer[*sarama.ConsumerMessage, Msg] {
+func (k *KafkaConsumerGroupOperator[Msg]) Serializer() queue.MessageSerializer[*sarama.ConsumerMessage, Msg] {
 	return k.serializer
 }
 
-func (k *ConsumeOperator[Msg]) Callback() queue.Callback[Msg] {
+func (k *KafkaConsumerGroupOperator[Msg]) Callback() queue.Callback[Msg] {
 	return k.callback
 }
 
-func (k *ConsumeOperator[Msg]) Consume(msg *sarama.ConsumerMessage) {
-	sMsg, err := k.serializer.Serialize(msg)
-	if err != nil {
-		return
+func (k *KafkaConsumerGroupOperator[Msg]) init() error {
+	var consumerGroupHandler sarama.ConsumerGroupHandler
+
+	if k.config.Consumer.Offsets.AutoCommit.Enable {
+		consumerGroupHandler = NewConsumerGroupHandlerForAutoCommit(k.consumeRawMsg)
+	} else {
+		consumerGroupHandler = NewConsumerGroupHandlerForManualCommit(k.consumeRawMsg)
 	}
 
-	k.callback(sMsg)
-}
-
-func (k *ConsumeOperator[Msg]) Init() {
-	consumer := NewConsumer(k.Consume)
-
-	k.consumer = consumer
-	k.initialized = true
-}
-
-func (k *ConsumeOperator[Msg]) StartConsume() error {
-	if !k.initialized {
-		k.Init()
-	}
-
-	client, err := sarama.NewConsumerGroup(k.brokers, k.groupId, k.config)
+	k.consumerGroupHandler = consumerGroupHandler
+	consumerGroup, err := sarama.NewConsumerGroup(
+		k.brokers,
+		k.groupId,
+		k.config,
+	)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	k.cancel = &cancel
-
-	go func() {
-		for {
-			if err := client.Consume(ctx, []string{k.topic}, k.consumer); err != nil {
-				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
-					return
-				}
-			}
-
-			if ctx.Err() != nil {
-				return
-			}
-		}
-	}()
-
+	k.consumerGroup = consumerGroup
+	k.initialized = true
 	return nil
 }
 
-func (k *ConsumeOperator[Msg]) StopConsume() error {
+func (k *KafkaConsumerGroupOperator[Msg]) consumeRawMsg(msg *sarama.ConsumerMessage) error {
+	serializedMsg, err := k.serializer.Serialize(msg)
+	if err != nil {
+		return err
+	}
+
+	return k.callback(serializedMsg)
+}
+
+func (k *KafkaConsumerGroupOperator[Msg]) StopConsume() error {
 	if k.cancel == nil {
 		return errors.New("tried to stop consume before starting (or operator no started, but StopConsume called)")
 	}
@@ -102,6 +109,46 @@ func (k *ConsumeOperator[Msg]) StopConsume() error {
 	(*k.cancel)()
 
 	return nil
+}
+
+func (k *KafkaConsumerGroupOperator[Msg]) StartConsume() error {
+	if !k.initialized {
+		return queue.ErrStartConsume
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	k.cancel = &cancel
+
+	go k.keepConsumptionAlive(ctx)
+
+	return nil
+}
+
+func (k *KafkaConsumerGroupOperator[Msg]) keepConsumptionAlive(ctx context.Context) {
+	topics := []string{k.topic}
+	isConsumerClosed := func(err error) bool {
+		if err == nil {
+			return false
+		}
+		return errors.Is(err, sarama.ErrClosedConsumerGroup)
+	}
+
+consumptionLoop:
+	for {
+		if err := k.consumerGroup.Consume(
+			ctx,
+			topics,
+			k.consumerGroupHandler,
+		); isConsumerClosed(err) {
+			break consumptionLoop
+		}
+
+		if ctx.Err() != nil {
+			break consumptionLoop
+		}
+	}
+
+	return
 }
 
 // AckConsumeOperator 는 Acknowledge (메세지 브로커에게 보내는 메세지 정상 수신 응답) 을 다루는 컨슈머입니다. 실행되는 흐름은 다음과 같습니다.
@@ -185,7 +232,7 @@ func (k *AckConsumeOperator[Msg]) BeforeConsume(msg *sarama.ConsumerMessage, ack
 func (k *AckConsumeOperator[Msg]) Consume(msg *sarama.ConsumerMessage) {
 	sMsg, err := k.serializer.Serialize(msg)
 	if err != nil {
-		return
+		return err
 	}
 
 	k.callback(sMsg)
@@ -204,6 +251,7 @@ func (k *AckConsumeOperator[Msg]) Init() {
 
 	k.consumer = consumer
 	k.initialized = true
+	return nil
 }
 
 func (k *AckConsumeOperator[Msg]) StartConsume() error {
@@ -216,24 +264,7 @@ func (k *AckConsumeOperator[Msg]) StartConsume() error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	k.cancel = &cancel
-
-	go func() {
-		for {
-			if err := client.Consume(ctx, []string{k.topic}, k.consumer); err != nil {
-				if errors.Is(err, sarama.ErrClosedConsumerGroup) {
-					return
-				}
-			}
-
-			if ctx.Err() != nil {
-				return
-			}
-		}
-	}()
-
-	return nil
+	return k.callback(serializedMsg)
 }
 
 func (k *AckConsumeOperator[Msg]) StopConsume() error {
@@ -244,6 +275,46 @@ func (k *AckConsumeOperator[Msg]) StopConsume() error {
 	(*k.cancel)()
 
 	return nil
+}
+
+func (k *KafkaConsumerGroupOperator[Msg]) StartConsume() error {
+	if !k.initialized {
+		return queue.ErrStartConsume
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	k.cancel = &cancel
+
+	go k.keepConsumptionAlive(ctx)
+
+	return nil
+}
+
+func (k *KafkaConsumerGroupOperator[Msg]) keepConsumptionAlive(ctx context.Context) {
+	topics := []string{k.topic}
+	isConsumerClosed := func(err error) bool {
+		if err == nil {
+			return false
+		}
+		return errors.Is(err, sarama.ErrClosedConsumerGroup)
+	}
+
+consumptionLoop:
+	for {
+		if err := k.consumerGroup.Consume(
+			ctx,
+			topics,
+			k.consumerGroupHandler,
+		); isConsumerClosed(err) {
+			break consumptionLoop
+		}
+
+		if ctx.Err() != nil {
+			break consumptionLoop
+		}
+	}
+
+	return
 }
 
 type BytesProduceOperatorCtor struct {
@@ -316,5 +387,5 @@ func (k *BytesProduceOperator) Produce(message []byte) error {
 		return err
 	}
 
-	return nil
+	return err
 }

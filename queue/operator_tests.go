@@ -1,9 +1,10 @@
 package queue
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type mockSerializer[Input any, Output any] struct {
@@ -27,21 +28,21 @@ func newMockSerializer[Input any, Output any]() *mockSerializer[Input, Output] {
 
 func TestSuiteConsumeOperator[InMsg any, Msg any](
 	t *testing.T,
-	operatorProvider func(queueName string, serializer MessageSerializer[InMsg, Msg], callback Callback[Msg]) ConsumeOperator[InMsg, Msg],
-	testMessageProvider func() InMsg,
+	operatorProvider func(queueName string, serializer MessageSerializer[InMsg, Msg], callback Callback[Msg]) Consumer[InMsg, Msg],
+	rawMessageProvider func() InMsg,
 ) {
 	t.Run("ConsumeOperator Test Suite", func(t *testing.T) {
 		var queueName string
 		var serializer MessageSerializer[InMsg, Msg]
 		var callbackCount atomic.Int64
-		var callbackValue Msg
 		var callback Callback[Msg]
 
 		queueName = "testQueueName"
 		serializer = newMockSerializer[InMsg, Msg]()
 		callbackCount = atomic.Int64{}
-		callback = func(msg Msg) {
+		callback = func(msg Msg) error {
 			callbackCount.Add(1)
+			return nil
 		}
 
 		operator := operatorProvider(queueName, serializer, callback)
@@ -51,8 +52,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -65,8 +67,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -86,8 +89,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator = operatorProvider(queueName, serializer, callback)
 			})
@@ -95,38 +99,14 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 			assert.NotNil(t, operator.Callback())
 		})
 
-		t.Run("Consume", func(t *testing.T) {
-			t.Cleanup(func() {
-				queueName = "testQueueName"
-				serializer = newMockSerializer[InMsg, Msg]()
-				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
-					callbackCount.Add(1)
-					callbackValue = msg
-				}
-				operator = operatorProvider(queueName, serializer, callback)
-			})
-
-			msg := testMessageProvider()
-			assert.NotNil(t, msg)
-
-			expectedSerializedValue, err := serializer.Serialize(msg)
-			assert.Nil(t, err)
-			assert.Equal(t, serializer.(*mockSerializer[InMsg, Msg]).Count(), int64(1))
-
-			operator.Consume(msg)
-			assert.Equal(t, serializer.(*mockSerializer[InMsg, Msg]).Count(), int64(2))
-			assert.Equal(t, callbackCount.Load(), int64(1))
-			assert.Equal(t, callbackValue, expectedSerializedValue)
-		})
-
 		t.Run("StartConsume", func(t *testing.T) {
 			t.Cleanup(func() {
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator.StopConsume()
 				operator = operatorProvider(queueName, serializer, callback)
@@ -141,8 +121,9 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 				queueName = "testQueueName"
 				serializer = newMockSerializer[InMsg, Msg]()
 				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) {
+				callback = func(msg Msg) error {
 					callbackCount.Add(1)
+					return nil
 				}
 				operator.StopConsume()
 				operator = operatorProvider(queueName, serializer, callback)

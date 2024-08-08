@@ -6,8 +6,8 @@ import (
 	"github.com/violetpay-org/event-queue/queue"
 )
 
-func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) *kafkaqueue.ConsumeOperator[Msg] {
-	return kafkaqueue.NewConsumeOperator(serializer, callback, brokers, topic, groupId, config)
+func NewConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) queue.Consumer[*sarama.ConsumerMessage, Msg] {
+	return kafkaqueue.NewConsumer(serializer, callback, brokers, topic, groupId, config)
 }
 
 func NewAckConsumeOperator[Msg any](serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg], ackCallback queue.AckCallback[Msg], callback queue.Callback[Msg], brokers []string, topic string, groupId string, config *sarama.Config) *kafkaqueue.AckConsumeOperator[Msg] {

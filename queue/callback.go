@@ -1,7 +1,7 @@
 package queue
 
 // Callback 는 메시지를 처리하는 콜백 함수입니다.
-type Callback[M any] func(req M)
+type Callback[M any] func(req M) error
 
 // AckCallback 는 Acknowledge 를 처리하는 콜백 함수 타입입니다. 실행되는 흐름은 아래와 같습니다.
 //

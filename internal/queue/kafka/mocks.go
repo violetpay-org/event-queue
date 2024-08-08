@@ -2,6 +2,7 @@ package kafkaqueue
 
 import (
 	"context"
+
 	"github.com/IBM/sarama"
 )
 
@@ -67,6 +68,62 @@ func (t *MockConsumerGroupClaim) HighWaterMarkOffset() int64 {
 
 func (t *MockConsumerGroupClaim) Messages() <-chan *sarama.ConsumerMessage {
 	return t.DataChan
+}
+
+type MockSyncProducer struct{}
+
+// AbortTxn implements sarama.SyncProducer.
+func (*MockSyncProducer) AbortTxn() error {
+	panic("unimplemented")
+}
+
+// AddMessageToTxn implements sarama.SyncProducer.
+func (*MockSyncProducer) AddMessageToTxn(msg *sarama.ConsumerMessage, groupId string, metadata *string) error {
+	panic("unimplemented")
+}
+
+// AddOffsetsToTxn implements sarama.SyncProducer.
+func (*MockSyncProducer) AddOffsetsToTxn(offsets map[string][]*sarama.PartitionOffsetMetadata, groupId string) error {
+	panic("unimplemented")
+}
+
+// BeginTxn implements sarama.SyncProducer.
+func (*MockSyncProducer) BeginTxn() error {
+	panic("unimplemented")
+}
+
+// Close implements sarama.SyncProducer.
+func (*MockSyncProducer) Close() error {
+	panic("unimplemented")
+}
+
+// CommitTxn implements sarama.SyncProducer.
+func (*MockSyncProducer) CommitTxn() error {
+	panic("unimplemented")
+}
+
+// IsTransactional implements sarama.SyncProducer.
+func (*MockSyncProducer) IsTransactional() bool {
+	panic("unimplemented")
+}
+
+// SendMessage implements sarama.SyncProducer.
+func (*MockSyncProducer) SendMessage(msg *sarama.ProducerMessage) (partition int32, offset int64, err error) {
+	panic("unimplemented")
+}
+
+// SendMessages implements sarama.SyncProducer.
+func (*MockSyncProducer) SendMessages(msgs []*sarama.ProducerMessage) error {
+	panic("unimplemented")
+}
+
+// TxnStatus implements sarama.SyncProducer.
+func (*MockSyncProducer) TxnStatus() sarama.ProducerTxnStatusFlag {
+	panic("unimplemented")
+}
+
+func NewMockSyncProducer() sarama.SyncProducer {
+	return &MockSyncProducer{}
 }
 
 // MockAsyncProducer is a mock implementation of sarama.AsyncProducer
