@@ -1,25 +1,32 @@
-package kafkaqueue
+package kafkaqueue_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/IBM/sarama"
+	"github.com/joho/godotenv"
+	kafkaqueue "github.com/violetpay-org/event-queue/internal/queue/kafka"
 	"github.com/violetpay-org/event-queue/queue"
 )
-
-var brokers = []string{"kafka.vp-datacenter-1.violetpay.net:9092", "kafka.vp-datacenter-1.violetpay.net:9093", "kafka.vp-datacenter-1.violetpay.net:9094"}
 
 func mapOperatorProvider(
 	queueName string,
 	serializer queue.MessageSerializer[*sarama.ConsumerMessage, map[string]string],
 	callback queue.Callback[map[string]string],
 ) queue.ConsumeOperator[*sarama.ConsumerMessage, map[string]string] {
-	return NewConsumeOperator(
+	brokers, err := queue.GetBrokers(3)
+	if err != nil {
+		panic(err)
+	}
+
+	groupId := os.Getenv("KAFKA_GROUP_ID")
+	return kafkaqueue.NewConsumeOperator(
 		serializer,
 		callback,
 		brokers,
 		queueName,
-		"test-group-id",
+		groupId,
 		sarama.NewConfig(),
 	)
 }
@@ -29,6 +36,11 @@ func rawMsgProvider() *sarama.ConsumerMessage {
 }
 
 func TestConsumeOperator(t *testing.T) {
+	err := godotenv.Load("../../../.env")
+	if err != nil {
+		t.Error("Error loading .env file")
+	}
+
 	t.Run("map[string]string", func(t *testing.T) {
 		queue.TestSuiteConsumeOperator[*sarama.ConsumerMessage, map[string]string](
 			t,

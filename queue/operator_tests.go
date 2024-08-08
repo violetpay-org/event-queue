@@ -35,7 +35,6 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 		var queueName string
 		var serializer MessageSerializer[InMsg, Msg]
 		var callbackCount atomic.Int64
-		var callbackValue Msg
 		var callback Callback[Msg]
 
 		queueName = "testQueueName"
@@ -98,32 +97,6 @@ func TestSuiteConsumeOperator[InMsg any, Msg any](
 			})
 
 			assert.NotNil(t, operator.Callback())
-		})
-
-		t.Run("Consume", func(t *testing.T) {
-			t.Cleanup(func() {
-				queueName = "testQueueName"
-				serializer = newMockSerializer[InMsg, Msg]()
-				callbackCount = atomic.Int64{}
-				callback = func(msg Msg) error {
-					callbackCount.Add(1)
-					callbackValue = msg
-					return nil
-				}
-				operator = operatorProvider(queueName, serializer, callback)
-			})
-
-			msg := rawMessageProvider()
-			assert.NotNil(t, msg)
-
-			expectedSerializedValue, err := serializer.Serialize(msg)
-			assert.Nil(t, err)
-			assert.Equal(t, serializer.(*mockSerializer[InMsg, Msg]).Count(), int64(1))
-
-			operator.Consume(msg)
-			assert.Equal(t, serializer.(*mockSerializer[InMsg, Msg]).Count(), int64(2))
-			assert.Equal(t, callbackCount.Load(), int64(1))
-			assert.Equal(t, callbackValue, expectedSerializedValue)
 		})
 
 		t.Run("StartConsume", func(t *testing.T) {

@@ -4,7 +4,6 @@ type ConsumeOperator[InMsg any, Msg any] interface {
 	QueueName() string
 	Serializer() MessageSerializer[InMsg, Msg]
 	Callback() Callback[Msg]
-	Consume(msg InMsg) error
 	StartConsume() error
 	StopConsume() error
 }
