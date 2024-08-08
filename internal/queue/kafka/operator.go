@@ -31,7 +31,7 @@ func NewConsumeOperator[Msg any](
 	topic string,
 	groupId string,
 	config *sarama.Config,
-) queue.ConsumeOperator[*sarama.ConsumerMessage, Msg] {
+) queue.Consumer[*sarama.ConsumerMessage, Msg] {
 	consumerOperator := KafkaConsumerGroupOperator[Msg]{
 		serializer: serializer,
 		callback:   callback,

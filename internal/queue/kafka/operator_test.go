@@ -14,7 +14,7 @@ func mapOperatorProvider(
 	queueName string,
 	serializer queue.MessageSerializer[*sarama.ConsumerMessage, map[string]string],
 	callback queue.Callback[map[string]string],
-) queue.ConsumeOperator[*sarama.ConsumerMessage, map[string]string] {
+) queue.Consumer[*sarama.ConsumerMessage, map[string]string] {
 	brokers, err := queue.GetBrokers(3)
 	if err != nil {
 		panic(err)

@@ -28,7 +28,7 @@ func newMockSerializer[Input any, Output any]() *mockSerializer[Input, Output] {
 
 func TestSuiteConsumeOperator[InMsg any, Msg any](
 	t *testing.T,
-	operatorProvider func(queueName string, serializer MessageSerializer[InMsg, Msg], callback Callback[Msg]) ConsumeOperator[InMsg, Msg],
+	operatorProvider func(queueName string, serializer MessageSerializer[InMsg, Msg], callback Callback[Msg]) Consumer[InMsg, Msg],
 	rawMessageProvider func() InMsg,
 ) {
 	t.Run("ConsumeOperator Test Suite", func(t *testing.T) {

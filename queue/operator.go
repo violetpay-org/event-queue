@@ -1,6 +1,6 @@
 package queue
 
-type ConsumeOperator[InMsg any, Msg any] interface {
+type Consumer[InMsg any, Msg any] interface {
 	QueueName() string
 	Serializer() MessageSerializer[InMsg, Msg]
 	Callback() Callback[Msg]
