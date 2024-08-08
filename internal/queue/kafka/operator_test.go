@@ -21,7 +21,7 @@ func mapOperatorProvider(
 	}
 
 	groupId := os.Getenv("KAFKA_GROUP_ID")
-	return kafkaqueue.NewConsumeOperator(
+	return kafkaqueue.NewConsumer(
 		serializer,
 		callback,
 		brokers,

@@ -24,7 +24,7 @@ type KafkaConsumerGroupOperator[Msg any] struct {
 	consumerGroup        sarama.ConsumerGroup
 }
 
-func NewConsumeOperator[Msg any](
+func NewConsumer[Msg any](
 	serializer queue.MessageSerializer[*sarama.ConsumerMessage, Msg],
 	callback queue.Callback[Msg],
 	brokers []string,
