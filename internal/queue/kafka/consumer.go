@@ -27,6 +27,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 			c.callback(msg)
 
+			session.MarkMessage(msg, "") // sarama internal offset commit, not a kafka commit
 		case <-session.Context().Done():
 			return nil
 		}
