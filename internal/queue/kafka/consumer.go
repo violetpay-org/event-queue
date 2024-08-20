@@ -7,7 +7,7 @@ import (
 
 type Consumer struct {
 	callback func(*sarama.ConsumerMessage)
-	ready    chan bool
+	ready    chan bool // 채널이 존재한다면 준비 상태, 채널이 닫혔다면 구동되고 있는 상태
 }
 
 func NewConsumer(callback func(message *sarama.ConsumerMessage)) *Consumer {
@@ -45,6 +45,7 @@ func (c *Consumer) Setup(session sarama.ConsumerGroupSession) error {
 
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited.
 func (c *Consumer) Cleanup(session sarama.ConsumerGroupSession) error {
+	c.ready = make(chan bool)
 	log.Print("Consumer stopped")
 	return nil
 }

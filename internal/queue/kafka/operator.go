@@ -67,10 +67,10 @@ func (k *ConsumeOperator[Msg]) Init() {
 func (k *ConsumeOperator[Msg]) Running() bool {
 	select {
 	case _, ok := <-k.consumer.ready:
-		if !ok { // Channel 닫힘, Ready 됐다는 거
+		if !ok { // Channel 닫힘, 가동 중 (Ready X)
 			return true
 		}
-	default: // Channel 안 닫힘, Ready 인 됐다는 거
+	default: // Channel 열림, Consume 가능 상태 (Ready)
 		return false
 	}
 
@@ -90,7 +90,17 @@ func (k *ConsumeOperator[Msg]) StartConsume() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	k.cancel = &cancel
 
+	// TODO: Race Condition 발생 가능성 있음 (Consume 직후랑 Running 체크 사이에 상태 변경되어 다중으로 실행될 수 있음)
+	if k.Running() {
+		return errors.New("already running")
+	}
+
 	go func() {
+		// NOTE: Ctx Err 시에도 Consumer Cleanup 은 무조건 발생, 아래 라인을 굳이 또 실행할 필요가 없습니다.
+		//defer func() {
+		//	k.consumer.ready = make(chan bool)
+		//}()
+
 		for {
 			if err := client.Consume(ctx, []string{k.topic}, k.consumer); err != nil {
 				if errors.Is(err, sarama.ErrClosedConsumerGroup) {

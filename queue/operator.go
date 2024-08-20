@@ -5,6 +5,7 @@ type ConsumeOperator[InMsg any, Msg any] interface {
 	Serializer() MessageSerializer[InMsg, Msg]
 	Callback() Callback[Msg]
 	Consume(message InMsg)
+	Running() bool
 	StartConsume() error
 	StopConsume() error
 }
