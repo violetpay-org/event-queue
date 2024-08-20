@@ -64,6 +64,19 @@ func (k *ConsumeOperator[Msg]) Init() {
 	k.initialized = true
 }
 
+func (k *ConsumeOperator[Msg]) Running() bool {
+	select {
+	case _, ok := <-k.consumer.ready:
+		if !ok { // Channel 닫힘, Ready 됐다는 거
+			return true
+		}
+	default: // Channel 안 닫힘, Ready 인 됐다는 거
+		return false
+	}
+
+	return false
+}
+
 func (k *ConsumeOperator[Msg]) StartConsume() error {
 	if !k.initialized {
 		k.Init()

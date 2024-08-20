@@ -7,11 +7,13 @@ import (
 
 type Consumer struct {
 	callback func(*sarama.ConsumerMessage)
+	ready    chan bool
 }
 
 func NewConsumer(callback func(message *sarama.ConsumerMessage)) *Consumer {
 	return &Consumer{
 		callback: callback,
+		ready:    make(chan bool),
 	}
 }
 
@@ -36,6 +38,7 @@ func (c *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 
 // Setup is run at the beginning of a new session, before ConsumeClaim.
 func (c *Consumer) Setup(session sarama.ConsumerGroupSession) error {
+	close(c.ready)
 	log.Print("Consumer up and running")
 	return nil
 }
